@@ -21,7 +21,7 @@ We instantiate the following sequential updates:
 
 If we make the assumption that the average risk experienced by subpopulation $i$ is quadratic $\mathcal{R}_i(\theta) = \theta^T A_i \theta + b_i\theta + c_i$. Further assume that $A_i$ is positive definite and define $\phi_i:=(A_i^T A_i)^{-1} A_i b_i$ is the optimal risk minimizing decision for subpopulation $i$.
 
-- Given decisions of the learners, each subpopulation experiences average risk: $R^{\texttt{subpop}}_i = \sum_{j=1}^M \alpha_{ij}^t \mathcal{R}_i(\theta^t_j)$. Based on the risk with respect to each learner, the group updates the allocations to $\alpha_i^{t+1}$.
+- Given decisions of the learners, each subpopulation experiences average risk: $R^{\texttt{subpop}}_i = \sum_{j=1}^M \alpha_{ij}^t \mathcal{R}_i(\theta^t_j)$. Based on the risk with respect to each learner, the subpopulation updates the allocations to $\alpha_i^{t+1}$.
 - We study Multiplicative Weightw Updade Dynamics (MWUD) of the form:
 
 $$\alpha_{ij}^{t+1} \propto \alpha_{ij}^t(1-\epsilon)^{c_i(r_i(\theta_j^t))} $$
@@ -30,3 +30,5 @@ where $c_j$ is some sensible choice of comparison function, in experiments we wi
 ## Experiments
 
 We study the resulting decision dynamics. The first experimental result illustrates the non-monotonicity of average risks for learners and subpopulations. Further we illustrate that despite individual non-monotonicity the total loss is non-increases, and thus serves as a potential function for the decision dynamics. Second set of experiments investigate the social welfare benefits of increased competition among learners.
+
+All plots in the paper can be obtained by running the accompanying notebook. Replicating the experiments should take under 5 minutes in terms of running time on a standard laptop.
