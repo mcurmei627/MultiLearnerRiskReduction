@@ -15,6 +15,7 @@ We instantiate the following sequential updates:
 - Learner $j$ selects a decision rule parametrized by $\theta_j^t$. One way to do that is to assume that the learner perform risk minimization. At the population level (as opposed to finite samples) this would be:
 
   $$\theta^t = \arg\min_{\theta} \mathbb{E}_{x\sim \mathbb{D}\_j^t}[\ell(x, \theta)] =\arg \min_{\theta}\sum_{i=1}^N \beta_i\alpha^t_{ij} \mathcal{R}_i(\theta)$$
+
   where $\mathcal{R}_i(\theta) = \mathbb{E}_{x\sim \mathcal{D}\_i}[\ell(x, \theta)]$ and $\ell$ is some loss function.
 
 If we make the assumption that the average risk experienced by subpopulation $i$ is quadratic $\mathcal{R}_i(\theta) = \theta^T A_i \theta + b_i\theta + c_i$. Further assume that $A_i$ is positive definite and define $\phi_i:=(A_i^T A_i)^{-1} A_i b_i$ is the optimal risk minimizing decision for subpopulation $i$.
