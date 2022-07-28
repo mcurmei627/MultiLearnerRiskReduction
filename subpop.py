@@ -1,4 +1,5 @@
 import numpy as np
+import folktables
 
 class SubPop():
     def __init__(self, phi, beta, alphas, cov=None, sigmasq=1):
@@ -89,23 +90,64 @@ class QuadraticSubPop(SubPop):
 
 
 class EmpiricalSubPop(SubPop):
-    def __init__(self, *args,  N=100, **kwargs):
-        super(EmpiricalSubPop, self).__init__(*args, **kwargs)
-        self.N = N
+    def __init__(self, xs, ys, *args,  **kwargs):
+        self.xs = xs
+        self.ys = ys
+        self.N = self.xs.shape[0]
+        phi_emp = np.dot(np.linalg.pinv(self.xs), self.ys).flatten()
+        super(EmpiricalSubPop, self).__init__(phi_emp, *args, **kwargs)
         self.kind = 'empirical'
-        self.make_data()
-        self.phi_emp = np.dot(np.linalg.pinv(self.xs), self.ys).flatten()
-
-
-    def make_data(self):
-        self.xs = np.random.multivariate_normal(np.zeros(self.d), self.cov, size=self.N)
-        self.ys = np.array([np.dot(self.phi, x)+
-                       np.random.normal(0, scale=np.sqrt(self.sigmasq)) for x in self.xs])
 
     def min_expr(self, i):
-        A = self.beta*self.alphas[i] * self.xs
-        b = self.beta*self.alphas[i] * self.ys
+        A = self.beta*self.alphas[i] * self.xs.T @  self.xs
+        b = self.beta*self.alphas[i] *  self.xs.T @ self.ys
         return A, b
     
     def risk(self, theta):
         return np.linalg.norm(self.xs @ theta - self.ys)**2/self.N
+
+def generate_folktables_subpops(alphas):
+    data_source = folktables.ACSDataSource(survey_year='2018', horizon='1-Year', survey='person')
+    acs_data = data_source.get_data(states=["CA"]) #, download=True)
+    ACSTravelTimeReg = folktables.BasicProblem(
+        features=[
+            'AGEP',
+            'SCHL',
+            'MAR',
+            'SEX',
+            'DIS',
+            'ESP',
+            'MIG',
+            'RELP',
+            'RAC1P',
+            'PUMA',
+            'ST',
+            'CIT',
+            'OCCP',
+            'JWTR',
+            'POWPUMA',
+            'POVPIP',
+        ],
+        target="JWMNP",
+        target_transform=lambda x: x,
+        group='RAC1P',
+        preprocess=folktables.travel_time_filter,
+        postprocess=lambda x: np.nan_to_num(x, -1),
+    )
+    features, label, group = ACSTravelTimeReg.df_to_numpy(acs_data)
+    not_nan_inds = np.logical_not(np.isnan(label))
+    features = features[not_nan_inds]
+    label = label[not_nan_inds]
+    group = group[not_nan_inds]
+    label = 10*np.log(1+label)
+
+
+    subpops = []
+    for i,g in enumerate(np.unique(group)):
+        g_inds = group==g
+        g_beta = np.sum(g_inds) / len(group)
+
+        subpops.append(
+            EmpiricalSubPop(features[g_inds], label[g_inds], g_beta, alphas[i])
+            )
+    return subpops
