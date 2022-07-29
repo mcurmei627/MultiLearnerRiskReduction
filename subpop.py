@@ -146,8 +146,13 @@ def generate_folktables_subpops(alphas):
     for i,g in enumerate(np.unique(group)):
         g_inds = group==g
         g_beta = np.sum(g_inds) / len(group)
+        
+        # Ng = sum(g_inds)
+        # cov = features[g_inds].T @ features[g_inds] / Ng
+        # phi = np.linalg.lstsq(features[g_inds], label[g_inds])
 
         subpops.append(
             EmpiricalSubPop(features[g_inds], label[g_inds], g_beta, alphas[i])
+            # QuadraticSubPop(phi, g_beta, alphas[i], cov=cov)
             )
     return subpops
