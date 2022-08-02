@@ -15,6 +15,7 @@ def noisy_quadratic_min(subpops, i):
     var = np.var(noiseless_theta)
     noise = np.random.normal(size=noiseless_theta.shape, scale=0.0001*var)
     return noise+noiseless_theta
+    
 
 def learner_decisions(subpops, current = None, min_fn=quadratic_min):
     '''alpha[i,j] <- fraction of subpop j allocated to learner i'''

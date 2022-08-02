@@ -24,7 +24,7 @@ class SubPop():
         self.converged_for = 0
     
     def update_alpha(self, thetas, epsilon=0.1,):
-        """Updates the alloations of the subpopulation
+        """Updates the allocations of the subpopulation
 
         Args:
             thetas (iterable of np.array): the decisions of each learner
@@ -67,7 +67,6 @@ class QuadraticSubPop(SubPop):
 
     def min_expr(self, i):
         """Helper function used by learner i in the minimization of the risk
-
         Args:
             i (int): index of learner
 
@@ -103,56 +102,103 @@ class EmpiricalSubPop(SubPop):
         b = self.beta*self.alphas[i] *  self.xs.T @ self.ys
         return A, b
     
-    def risk(self, theta):
-        return np.linalg.norm(self.xs @ theta - self.ys)**2/self.N
+    def risk(self, theta, relative = False):
+        risk = np.linalg.norm(self.xs @ theta - self.ys)**2/self.N
+        if not relative:
+            return risk
+        min_risk = np.linalg.norm(self.xs @ self.phi - self.ys)**2/self.N
+        return risk/min_risk
 
-def generate_folktables_subpops(alphas):
+def generate_folktables_data(alphas):
     data_source = folktables.ACSDataSource(survey_year='2018', horizon='1-Year', survey='person')
-    acs_data = data_source.get_data(states=["CA"]) #, download=True)
+    acs_data = data_source.get_data(states=["CA"]) #,download=True)
+    # process school
+    def _p_schl(x):
+        if x<=15:
+            return 0 # less than HS
+        if x<=19:
+            return 1 # more than HS less than underrgraduate
+        if x>=20:
+            return 2 # college and above
+        return x
+
+    # process means of transporation
+    def _p_jwtr(x):
+        if x == 1:
+            return 0 # driving
+        if x <= 7:
+            return 1 # public transport
+        if x in [8, 9, 10]: # biked or walked
+            return 2
+        if x == 11:
+            return 3 # worked from home
+        if x == 12:
+            return 4 # another method
+        return x
+
+    # process race variable
+    def _p_rac1p(x):
+        if x <= 4:
+            return x-1
+        if x == 5: # combine Native and Alaska Native Only into one category
+                # since Alaska Native Only contains just 9 individuals
+                # and decision phi that achieves minimum risk is not defined
+            return 3
+        if x > 5:
+            return x-2
+        return x
+
+    def postprocess(df, label_df, group_df):
+        ## Post process features
+        df.loc[:, 'SCHL'] = df['SCHL'].apply(_p_schl)
+        # process marital status (binary) 
+        df.loc[:, 'MAR'] = df['MAR'].apply(lambda x: 0 if x == 1 else 1)
+        # process sex, dis, mig (binary, 0 index)
+        df.loc[:, 'SEX'] = df['SEX'].apply(lambda x: x-1)
+        df.loc[:, 'DIS'] = df['DIS'].apply(lambda x: x-1)
+        df.loc[:, 'MIG'] = df['MIG'].apply(lambda x: x-1)
+        # procee means of transportation
+        df.loc[:, 'JWTR'] = df['JWTR'].apply(_p_jwtr)
+        # process citizenship (0 indec)
+        df.loc[:, 'CIT'] = df['CIT'].apply(lambda x:x-1)
+        categorical_features = ['SCHL', 'JWTR', 'MIG', 'CIT']
+        for f in categorical_features:
+            dummy_df = pd.get_dummies(df[f], prefix = f, prefix_sep = "_")
+            df = pd.merge(
+                left = df,
+                right = dummy_df,
+                left_index = True,
+                right_index = True,
+            )
+        df.drop(labels = categorical_features+['RAC1P'], axis=1, inplace=True)
+        # scale numerical variables for better conditioning
+        df['POVPIP'] = df['POVPIP']/500
+        df['AGEP'] = df['AGEP']/80
+        
+        ## Post process label
+        label_df.loc[:,'JWMNP'] = label_df['JWMNP'].apply(lambda x: 10*np.log(1+x))
+        
+        ## Post process group
+        group_df.loc[:, 'RAC1P'] = group_df['RAC1P'].apply(_p_rac1p)
+        return df, label_df, group_df
+
     ACSTravelTimeReg = folktables.BasicProblem(
         features=[
-            'AGEP',
-            'SCHL',
+            'AGEP', # see https://arxiv.org/pdf/2108.04884.pdf
+            'SCHL', # for detailed description of the columns and their values
             'MAR',
             'SEX',
             'DIS',
-            'ESP',
             'MIG',
-            'RELP',
             'RAC1P',
-            'PUMA',
-            'ST',
             'CIT',
-            'OCCP',
             'JWTR',
-            'POWPUMA',
             'POVPIP',
         ],
         target="JWMNP",
-        target_transform=lambda x: x,
-        group='RAC1P',
-        preprocess=folktables.travel_time_filter,
-        postprocess=lambda x: np.nan_to_num(x, -1),
-    )
-    features, label, group = ACSTravelTimeReg.df_to_numpy(acs_data)
-    not_nan_inds = np.logical_not(np.isnan(label))
-    features = features[not_nan_inds]
-    label = label[not_nan_inds]
-    group = group[not_nan_inds]
-    label = 10*np.log(1+label)
-
-
-    subpops = []
-    for i,g in enumerate(np.unique(group)):
-        g_inds = group==g
-        g_beta = np.sum(g_inds) / len(group)
         
-        # Ng = sum(g_inds)
-        # cov = features[g_inds].T @ features[g_inds] / Ng
-        # phi = np.linalg.lstsq(features[g_inds], label[g_inds])
-
-        subpops.append(
-            EmpiricalSubPop(features[g_inds], label[g_inds], g_beta, alphas[i])
-            # QuadraticSubPop(phi, g_beta, alphas[i], cov=cov)
-            )
-    return subpops
+        group='RAC1P',
+        preprocess= folktables.travel_time_filter,
+    )
+    features, label, group = postprocess(*ACSTravelTimeReg.df_to_pandas(acs_data))
+    return(features, label, group)
