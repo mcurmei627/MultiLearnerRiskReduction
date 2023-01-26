@@ -1,6 +1,6 @@
 # Multi Player Risk Reduction
 
-This repository contains the numerical experiments for **Multi-learner risk reduction under endogenous participation dynamics** paper currently under review @NeurIPS 2022.
+This repository contains the numerical experiments for **Emergent segmentation from participation dynamics and multi-learner retraining** paper currently under review @ICML 2023.
 
 ## Setup
 
