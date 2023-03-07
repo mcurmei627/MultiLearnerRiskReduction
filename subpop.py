@@ -1,8 +1,8 @@
 import numpy as np
-import folktables
+#import folktables
 
 class SubPop():
-    def __init__(self, phi, beta, alphas, cov=None, sigmasq=1):
+    def __init__(self, phi, beta, alphas, cov=None, sigmasq=1, price_sensitivity=0):
         """ Subpopulation Class
 
         Args:
@@ -17,20 +17,25 @@ class SubPop():
         self.d = phi.size
         self.cov = np.eye(self.d) if cov is None else cov
         self.sigmasq = sigmasq
+        self.price_sensitivity = price_sensitivity
         self.beta = beta
         self.alphas = alphas
         self.t = 0
         self.converged = False
         self.converged_for = 0
     
-    def update_alpha(self, thetas, epsilon=0.1,):
+    def update_alpha(self, thetas, epsilon=0.1, prices = None):
         """Updates the allocations of the subpopulation
 
         Args:
             thetas (iterable of np.array): the decisions of each learner
             epsilon (float, optional): constant on the MWUD. Defaults to 0.1.
-        """        
-        r = [self.risk(theta) for theta in thetas]
+            prices (iterable of floats, optional): prices of each learner. Defaults to None.
+        """
+        num_learners = len(thetas)
+        if prices is None:
+            prices = np.zeros(num_learners)        
+        r = [self.risk(theta, prices[i]) for i, theta in enumerate(thetas)]
         new_alphas = self.alphas * np.power((1-epsilon), r)
         new_alphas /= np.sum(new_alphas)
         self.converged = np.allclose(new_alphas, self.alphas)
@@ -52,7 +57,7 @@ class SubPop():
         self.converged = False
         self.converged_for = 0
 
-    def risk(self, theta):
+    def risk(self, theta, price):
         """Computes the average risk for the subpopulation with respect to parameter theta
 
         Args:
@@ -78,13 +83,15 @@ class QuadraticSubPop(SubPop):
         b = self.beta * self.alphas[i] * np.dot(self.cov, self.phi)
         return A, b
     
-    def risk(self, theta):
+    def risk(self, theta, price = 0):
         """Computes the average risk for the subpopulation assumong that is  quadradic
 
         Args:
             theta (np.array): decision of a learner
         """        
-        return(np.linalg.norm(np.dot(self.cov, theta - self.phi))**2 + self.sigmasq)
+        risk = np.linalg.norm(np.dot(self.cov, theta - self.phi))**2 + self.sigmasq + self.price_sensitivity*price
+        #print('risk', risk)
+        return(risk)
 
 
 
@@ -102,11 +109,11 @@ class EmpiricalSubPop(SubPop):
         b = self.beta*self.alphas[i] *  self.xs.T @ self.ys
         return A, b
     
-    def risk(self, theta, relative = False):
-        risk = np.linalg.norm(self.xs @ theta - self.ys)**2/self.N
+    def risk(self, theta, price=0, relative = False):
+        risk = np.linalg.norm(self.xs @ theta - self.ys)**2/self.N + self.price_sensitivity*price
         if not relative:
             return risk
-        min_risk = np.linalg.norm(self.xs @ self.phi - self.ys)**2/self.N
+        min_risk = np.linalg.norm(self.xs @ self.phi - self.ys)**2/self.N + self.price_sensitivity*price
         return risk/min_risk
 
 def generate_folktables_data(alphas):
