@@ -24,7 +24,7 @@ class SubPop():
         self.converged = False
         self.converged_for = 0
     
-    def update_alpha(self, thetas, epsilon=0.1, prices = None):
+    def update_alpha(self, thetas, epsilon=0.1, prices = None, dryrun=False):
         """Updates the allocations of the subpopulation
 
         Args:
@@ -38,11 +38,13 @@ class SubPop():
         r = [self.risk(theta, prices[i]) for i, theta in enumerate(thetas)]
         new_alphas = self.alphas * np.power((1-epsilon), r)
         new_alphas /= np.sum(new_alphas)
-        self.converged = np.allclose(new_alphas, self.alphas)
-        if self.converged:
-            self.converged_for += 1
-        self.alphas = new_alphas
-        self.t += 1 
+        if not dryrun:
+            self.converged = np.allclose(new_alphas, self.alphas)
+            if self.converged:
+                self.converged_for += 1
+            self.alphas = new_alphas
+            self.t += 1
+        return new_alphas
 
     def break_learner(self, i):
         """Breaks learner i into two different learners by adding a clone of the learner
