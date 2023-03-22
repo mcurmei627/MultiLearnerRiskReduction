@@ -28,6 +28,22 @@ def learner_decisions(subpops, current = None, min_fn=quadratic_min):
             new_thetas.append(theta_i)
     return new_thetas
 
+def learner_max_price(thetas, prices, subpops, min_fn=quadratic_min):
+    n_learners = len(thetas)
+    new_prices = [0] * len(prices)
+    #price_candidates = np.linspace(0, 100, 51)
+    for i in range(n_learners):
+        price_candidates = [prices[i] + 1, prices[i] * 2, prices[i] / 2]
+        profit_candidates = []
+        for p in price_candidates:
+            tmp = prices[i]
+            prices[i] = p
+            new_alphas = subpop_decisions(thetas, subpops, epsilon=0.1, prices=prices, dryrun=True)
+            profit_candidates.append(new_alphas[:, i].sum() * p)  # warning: assumes beta is uniform
+            prices[i] = tmp
+        new_prices[i] = price_candidates[np.argmax(profit_candidates)]
+    return new_prices
+
 def learner_price_decisions(thetas, prices, subpops, min_fn=quadratic_min):
     '''alpha[i,j] <- fraction of subpop j allocated to learner i'''
     n_learners = len(thetas)
@@ -60,12 +76,12 @@ def get_all_risks(thetas, subpops, weighted_alpha=True, weighted_beta=True, pric
                 r[i,j] *= subpops[j].beta
     return r
 
-def subpop_decisions(thetas, subpops, epsilon = 0.1,  prices=None):
+def subpop_decisions(thetas, subpops, epsilon = 0.1,  prices=None, dryrun=False):
     n_learners = len(thetas)
     if prices is None:
         prices = np.zeros(n_learners)
-    [subpop.update_alpha(thetas, epsilon, prices) for _, subpop in enumerate(subpops)]
-    return np.array([subpop.alphas for subpop in subpops])
+    alphas = [subpop.update_alpha(thetas, epsilon, prices, dryrun=dryrun) for _, subpop in enumerate(subpops)]
+    return np.array(alphas)
 
 def average_risk_subpop(thetas, subpops, prices=None):
     r = get_all_risks(thetas, subpops, weighted_alpha=True, prices=prices)
