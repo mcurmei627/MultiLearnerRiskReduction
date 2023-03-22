@@ -31,9 +31,8 @@ def learner_decisions(subpops, current = None, min_fn=quadratic_min):
 def learner_max_price(thetas, prices, subpops, min_fn=quadratic_min):
     n_learners = len(thetas)
     new_prices = [0] * len(prices)
-    #price_candidates = np.linspace(0, 100, 51)
     for i in range(n_learners):
-        price_candidates = [prices[i] + 1, prices[i] * 2, prices[i] / 2]
+        price_candidates = [prices[i], prices[i] * 0.9, prices[i] - 1, prices[i] + 1, prices[i] * 1.1]
         profit_candidates = []
         for p in price_candidates:
             tmp = prices[i]
