@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import folktables
+from sklearn.linear_model import LinearRegression
 
 
 class SubPop():
@@ -49,8 +50,15 @@ class SubPop():
             i (int): index of learner to be split
         """
         alphas = self.alphas
-        alphas[i] = self.alphas[i]/2
-        self.alphas = np.append(alphas, alphas[i])
+        learner_alphas = alphas[i]/2
+        # slightly perturb the learner's allocation
+        original_learner_alphas = learner_alphas + \
+            np.random.normal(0, 0.001)
+        # clip between 0 and 1
+        original_learner_alphas = np.clip(original_learner_alphas, 0, 1)
+        new_learner_alphas = alphas[i] - original_learner_alphas
+        alphas[i] = original_learner_alphas
+        self.alphas = np.append(alphas, new_learner_alphas)
         self.converged = False
         self.converged_for = 0
 
@@ -95,8 +103,10 @@ class EmpiricalSubPop(SubPop):
         self.xs = xs
         self.ys = ys
         self.N = self.xs.shape[0]
-        phi_emp = np.dot(np.linalg.pinv(self.xs), self.ys).flatten()
+        phi_emp = LinearRegression(
+            fit_intercept=False).fit(self.xs, self.ys).coef_
         super(EmpiricalSubPop, self).__init__(phi_emp, *args, **kwargs)
+        self.cov = self.xs.T @ self.xs/self.N
         self.kind = 'empirical'
 
     def min_expr(self, i):
@@ -117,7 +127,8 @@ class SampledSubPop(SubPop):
         self.xs = xs
         self.ys = ys
         self.N = self.xs.shape[0]
-        phi_emp = np.dot(np.linalg.pinv(self.xs), self.ys).flatten()
+        phi_emp = LinearRegression(
+            fit_intercept=False).fit(self.xs, self.ys).coef_
         super(SampledSubPop, self).__init__(phi_emp, *args, **kwargs)
         self.kind = 'sampled_shared'
         self.pop_N = self.N
@@ -153,7 +164,8 @@ class SampledMultinomialSubPop(SubPop):
         self.xs = xs
         self.ys = ys
         self.N = self.xs.shape[0]
-        phi_emp = np.dot(np.linalg.pinv(self.xs), self.ys).flatten()
+        phi_emp = LinearRegression(
+            fit_intercept=False).fit(self.xs, self.ys).coef_
         super(SampledMultinomialSubPop, self).__init__(
             phi_emp, *args, **kwargs)
         self.kind = 'sampled'
@@ -240,13 +252,12 @@ def generate_folktables_data():
         df.loc[:, 'SEX'] = df['SEX'].apply(lambda x: x-1)
         df.loc[:, 'DIS'] = df['DIS'].apply(lambda x: x-1)
         df.loc[:, 'MIG'] = df['MIG'].apply(lambda x: x-1)
-        # procee means of transportation
+        # process means of transportation
         df.loc[:, 'JWTR'] = df['JWTR'].apply(_p_jwtr)
-        # process citizenship (0 indec)
-        df.loc[:, 'CIT'] = df['CIT'].apply(lambda x: x-1)
-        categorical_features = ['SCHL', 'JWTR', 'MIG', 'CIT']
+        categorical_features = ['SCHL', 'JWTR', 'MIG']
         for f in categorical_features:
-            dummy_df = pd.get_dummies(df[f], prefix=f, prefix_sep="_")
+            dummy_df = pd.get_dummies(
+                df[f], prefix=f, prefix_sep="_", drop_first=True)
             df = pd.merge(
                 left=df,
                 right=dummy_df,
