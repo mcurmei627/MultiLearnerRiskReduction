@@ -22,6 +22,9 @@ params["ytick.labelsize"] = TICK_SIZE
 params["font.family"] = "Times New Roman"
 CONTEXT = sns.plotting_context("paper", rc=params)
 
+DEFAULT_COLORS = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple',
+                  'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
+
 
 def adjust_color(color, amount=1.0):
     """
@@ -67,8 +70,7 @@ def plot_data(axis, data, label_prefix, color, linestyle='-', linewidth=2, legen
 
 def get_colors(n_colors, special_color=None):
     """Generates or selects colors for plotting."""
-    default_colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple',
-                      'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
+    default_colors = DEFAULT_COLORS
 
     if special_color:
         return [special_color] * n_colors

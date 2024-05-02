@@ -1,4 +1,5 @@
 import numpy as np
+from tqdm import tqdm
 
 
 def quadratic_min(subpops, i, **kwargs):
@@ -10,8 +11,6 @@ def quadratic_min(subpops, i, **kwargs):
         b_list.append(b)
     A_mat = np.sum(A_list, axis=0)
     b = np.sum(b_list, axis=0)
-    # print types
-    print(type(A_mat), type(b))
     return np.dot(np.linalg.pinv(A_mat), b).flatten()
 
 
@@ -110,7 +109,7 @@ def run_experiment(T, subpops, min_fn=quadratic_min, early_stop=False, verbose=T
     all_alphas = []
     thetas = np.zeros((n_learners, len(subpops[0].phi)))
 
-    for t in range(T):
+    for t in tqdm(range(T)):
         for subpop in subpops:
             if (subpop.kind == 'sampled_shared' or subpop.kind == 'sampled') and sample_size is not None:
                 subpop.sample(sample_size)
