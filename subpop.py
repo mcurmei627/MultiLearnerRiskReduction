@@ -297,6 +297,10 @@ def generate_folktables_data():
     )
     features, label, group = postprocess(
         *ACSTravelTimeReg.df_to_pandas(acs_data))
+    # replace nas with zeros in a dataframe
+    features = features.fillna(0)
+    # reolace boolean columns with integers
+    features = features.astype(np.float32)
     return (features, label, group)
 
 
