@@ -3,8 +3,6 @@ import pandas as pd
 import folktables
 from sklearn.linear_model import LinearRegression
 
-import folktables
-
 
 class SubPop():
     def __init__(self, phi, beta, alphas, cov=None, sigmasq=1):
